@@ -41,10 +41,30 @@ def parse():
 	return jsonify({'msg': parsed_name}), 200
 
 # [TASK 1] ====================================================================
-# Takes in a recipeName and returns it in a form that 
+# Takes in a recipeName and returns it in a form that
 def parse_handwriting(recipeName: str) -> Union[str | None]:
-	# TODO: implement me
-	return recipeName
+    """
+    Parse the handwriting of the recipient's name
+    and return the name in a readable format.
+
+    Args:
+    recipeName (str): The recipient's name in handwriting.
+
+    Returns:
+    str: The recipient's name in a readable format.
+    """
+    if not recipeName or recipeName.strip() == "":
+        return None
+
+    # Clean up the recipient name
+    recipeName = re.sub(r'[_-]+', ' ',recipeName)
+    recipeName = re.sub(r'[^a-zA-Z\s]','',recipeName)
+    recipeName = re.sub(r'\s+', ' ', recipeName).strip()
+    recipeName =  re.sub(r'\b\w', lambda match: match.group(0).upper(),	recipeName.lower())
+
+    if len(recipeName.split()) <= 0:
+        return None
+    return recipeName
 
 
 # [TASK 2] ====================================================================
