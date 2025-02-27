@@ -57,13 +57,10 @@ def parse_handwriting(recipeName: str) -> Union[str | None]:
         return None
 
     # Clean up the recipient name
-    recipeName = re.sub(r'[_-]+', ' ',recipeName)
-    recipeName = re.sub(r'[^a-zA-Z\s]','',recipeName)
+    recipeName = re.sub(r'[^a-zA-Z\s]', '',  re.sub(r'[_-]+', ' ', recipeName))
     recipeName = re.sub(r'\s+', ' ', recipeName).strip()
-    recipeName =  re.sub(r'\b\w', lambda match: match.group(0).upper(),	recipeName.lower())
+    recipeName =  recipeName.title()
 
-    if len(recipeName.split()) <= 0:
-        return None
     return recipeName
 
 
