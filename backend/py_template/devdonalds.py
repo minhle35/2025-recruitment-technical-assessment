@@ -88,16 +88,64 @@ def create_entry():
         return jsonify({"error": e.errors()}), 400
 
     # Store valid entry
-
     cookbook[entry.name] = entry.model_dump()
     return jsonify({}), 200
 
 # [TASK 3] ====================================================================
+# Helper function to calculate total cooktime and ingredient quantities
+def calculate_recipe_total(target: str):
+    if target not in cookbook:
+        raise ValueError(f"Recipe '{target}' not found")
+
+    recipe = cookbook[target]
+
+    # Base Case: If it's an ingredient, return cookTime and count
+    if recipe["type"] == "ingredient":
+        return recipe["cookTime"], {recipe["name"]: 1}
+
+    # Recursive Case: If it's a recipe
+    total_cook_time = 0
+    ingredient_count = {}
+
+    for item in recipe["requiredItems"]:
+        cook_time, count = calculate_recipe_total(item["name"])  # Recursive call
+        total_cook_time += cook_time * item["quantity"]  # Multiply cook time by quantity
+
+        # Aggregate ingredient counts
+        for ingredient, quantity in count.items():
+            if ingredient in ingredient_count:
+                ingredient_count[ingredient] += quantity * item["quantity"]
+            else:
+                ingredient_count[ingredient] = quantity * item["quantity"]
+
+    return total_cook_time, ingredient_count
+
+
 # Endpoint that returns a summary of a recipe that corresponds to a query name
 @app.route('/summary', methods=['GET'])
 def summary():
-    # TODO: implement me
-    return 'not implemented', 500
+    """
+    Endpoint that returns a summary of a recipe given its name.
+    """
+    name = request.args.get('name')
+    if name not in cookbook:
+        return jsonify({"error": "Entry not found"}), 400
+
+    entry = cookbook[name]
+
+    # If the entry is an ingredient, return its details directly
+    if entry["type"] == "ingredient":
+        return jsonify(entry), 200
+
+    # If the entry is a recipe, generate a summary
+    total_cook_time, ingredient_count = calculate_recipe_total(name)
+    summary = {
+        "name": entry["name"],
+        "totalCookTime": total_cook_time,
+        "ingredients": [{"name": ing, "quantity": qty} for ing, qty in ingredient_count.items()]
+    }
+
+    return jsonify(summary), 200
 
 
 # =============================================================================
