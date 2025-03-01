@@ -95,11 +95,12 @@ def create_entry():
 # Helper function to calculate total cooktime and ingredient quantities
 def calculate_recipe_total(target: str):
     if target not in cookbook:
-        raise ValueError(f"Recipe '{target}' not found")
+        return None, None
 
     recipe = cookbook[target]
 
-    # Base Case: If it's an ingredient, return cookTime and count
+    # Base Case: If it's an ingredient, return cookTime and count of 1 so later
+    # we can multiply by quantity
     if recipe["type"] == "ingredient":
         return recipe["cookTime"], {recipe["name"]: 1}
 
@@ -133,17 +134,23 @@ def summary():
 
     entry = cookbook[name]
 
-    # If the entry is an ingredient, return its details directly
+    # If the entry is an ingredient, return an error
     if entry["type"] == "ingredient":
-        return jsonify(entry), 200
+        return jsonify({"error": "Searched name is not a recipe"}), 400
 
     # If the entry is a recipe, generate a summary
-    total_cook_time, ingredient_count = calculate_recipe_total(name)
-    summary = {
-        "name": entry["name"],
-        "totalCookTime": total_cook_time,
-        "ingredients": [{"name": ing, "quantity": qty} for ing, qty in ingredient_count.items()]
-    }
+    for item in entry["requiredItems"]:
+        if item["name"] not in cookbook:
+            return jsonify({"error": "Entry not found"}), 400
+        total_cook_time, ingredient_count = calculate_recipe_total(name)
+        if total_cook_time is None:
+            print(f"Recipe '{name}' not found")
+            return jsonify({"error": "Entry not found"}), 400
+        summary = {
+            "name": entry["name"],
+            "totalCookTime": total_cook_time,
+            "ingredients": [{"name": ing, "quantity": qty} for ing, qty in ingredient_count.items()]
+        }
 
     return jsonify(summary), 200
 
