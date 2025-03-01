@@ -1,25 +1,25 @@
-from dataclasses import dataclass
+# from dataclasses import dataclass
 from typing import List, Dict, Union
 from flask import Flask, request, jsonify
 import re
+from pydantic import BaseModel, ValidationError, Field
 
 # ==== Type Definitions, feel free to add or modify ===========================
-@dataclass
-class CookbookEntry:
-	name: str
+class CookbookEntry(BaseModel):
+    name: str
+    type: str
 
-@dataclass
-class RequiredItem():
-	name: str
-	quantity: int
+class RequiredItem(BaseModel):
+    name: str
+    quantity: int = Field(..., gt=0)
 
-@dataclass
 class Recipe(CookbookEntry):
-	required_items: List[RequiredItem]
+    type: str = "recipe"
+    requiredItems: List[RequiredItem]
 
-@dataclass
 class Ingredient(CookbookEntry):
-	cook_time: int
+    type: str = "ingredient"
+    cookTime: int = Field(..., ge=0)
 
 
 # =============================================================================
@@ -28,17 +28,17 @@ class Ingredient(CookbookEntry):
 app = Flask(__name__)
 
 # Store your recipes here!
-cookbook = None
+cookbook: Dict[str, Union[Recipe, Ingredient]] = {}
 
 # Task 1 helper (don't touch)
 @app.route("/parse", methods=['POST'])
 def parse():
-	data = request.get_json()
-	recipe_name = data.get('input', '')
-	parsed_name = parse_handwriting(recipe_name)
-	if parsed_name is None:
-		return 'Invalid recipe name', 400
-	return jsonify({'msg': parsed_name}), 200
+    data = request.get_json()
+    recipe_name = data.get('input', '')
+    parsed_name = parse_handwriting(recipe_name)
+    if parsed_name is None:
+        return 'Invalid recipe name', 400
+    return jsonify({'msg': parsed_name}), 200
 
 # [TASK 1] ====================================================================
 # Takes in a recipeName and returns it in a form that
@@ -68,16 +68,36 @@ def parse_handwriting(recipeName: str) -> Union[str | None]:
 # Endpoint that adds a CookbookEntry to your magical cookbook
 @app.route('/entry', methods=['POST'])
 def create_entry():
-	# TODO: implement me
-	return 'not implemented', 500
+    """
+    Endpoint that adds an entry to the cookbook.
+    """
+    data = request.get_json()
 
+    # Validate type
+    if data.get("type") not in ["recipe", "ingredient"]:
+        return jsonify({"error": "Invalid type. Must be 'recipe' or 'ingredient'"}), 400
+
+    # Check if name already exists
+    if data["name"] in cookbook:
+        return jsonify({"error": "Name already exists"}), 400
+
+    try:
+        # Validate using Pydantic
+        entry = Recipe(**data) if data["type"] == "recipe" else Ingredient(**data)
+    except ValidationError as e:
+        return jsonify({"error": e.errors()}), 400
+
+    # Store valid entry
+
+    cookbook[entry.name] = entry.model_dump()
+    return jsonify({}), 200
 
 # [TASK 3] ====================================================================
 # Endpoint that returns a summary of a recipe that corresponds to a query name
 @app.route('/summary', methods=['GET'])
 def summary():
-	# TODO: implement me
-	return 'not implemented', 500
+    # TODO: implement me
+    return 'not implemented', 500
 
 
 # =============================================================================
@@ -85,4 +105,4 @@ def summary():
 # =============================================================================
 
 if __name__ == '__main__':
-	app.run(debug=True, port=8080)
+    app.run(debug=True, port=8080)
