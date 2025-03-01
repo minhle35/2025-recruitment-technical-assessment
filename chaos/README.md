@@ -34,15 +34,26 @@ Make sure to include foreign keys for the relationships that will `CASCADE` upon
 **Answer box:**
 ```sql
 CREATE TABLE forms (
-    --     Add columns here
+    id SERIAL PRIMARY KEY,
+    title TEXT NOT NULL,
+    description TEXT
 );
 
+CREATE TYPE question_type AS ENUM ('ShortAnswer', 'MultiSelect', 'MultiChoice');
+
 CREATE TABLE questions (
-    --     Add columns here
+    id SERIAL PRIMARY KEY,
+    form_id INTEGER NOT NULL,
+    title TEXT NOT NULL,
+    question_type question_type NOT NULL,
+    FOREIGN KEY (form_id) REFERENCES forms(id) on DELETE CASCADE
 );
 
 CREATE TABLE question_options (
-    --     Add columns here
+   id SERIAL PRIMARY KEY,
+   question_id INTEGER NOT NULL,
+   option TEXT NULL,
+   FOREIGN KEY (question_id) REFERENCES questions(id) on DELETE CASCADE
 );
 ```
 
@@ -58,5 +69,19 @@ Using the above schema, write a (Postgres) SQL `SELECT` query to return all ques
 
 **Answer box:**
 ```sql
--- Write query here
+SELECT
+    q.id,
+    q.form_id,
+    q.title,
+    q.question_type,
+    CASE
+        WHEN q.question_type = 'ShortAnswer' AND COUNT(o.option) = 0 THEN '[null]'
+        -- Convert MultiSelect and MultiChoice into PostgreSQL array format
+        ELSE '{' || STRING_AGG('"' || o.option || '"', ', ') || '}'
+    END AS options
+FROM questions q
+LEFT JOIN question_options o ON q.id = o.question_id
+WHERE q.form_id = 26583
+GROUP BY q.id, q.form_id, q.title, q.question_type
+ORDER BY q.id;
 ```
